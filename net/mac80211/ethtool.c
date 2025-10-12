@@ -941,6 +941,8 @@ static void ieee80211_get_stats2(struct net_device *dev,
 					data->link_stats[q].signal_chains_avg = accum;
 				}
 			}
+
+			ieee80211_et_add_survey_stats(&data->link_stats[q].survey_stats, sdata, link);
 		} /* for all links, report on first 4 we find */
 	} else {
 		/* else not type STATION, ie AP or something */
