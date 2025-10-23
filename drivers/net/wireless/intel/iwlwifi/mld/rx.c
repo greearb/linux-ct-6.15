@@ -1613,7 +1613,7 @@ iwl_mld_rx_with_sta(struct iwl_mld *mld, struct ieee80211_hdr *hdr,
 		    struct ieee80211_link_sta **rv_link_sta)
 {
 	struct ieee80211_sta *sta = NULL;
-	struct ieee80211_link_sta *link_sta;
+	struct ieee80211_link_sta *link_sta = NULL;
 	struct ieee80211_rx_status *rx_status;
 	u8 baid;
 
@@ -1631,6 +1631,9 @@ iwl_mld_rx_with_sta(struct iwl_mld *mld, struct ieee80211_hdr *hdr,
 		if (!IS_ERR_OR_NULL(link_sta)) {
 			sta = link_sta->sta;
 			*rv_link_sta = link_sta;
+		}
+		else {
+			link_sta = NULL;
 		}
 	} else if (!is_multicast_ether_addr(hdr->addr2)) {
 		/* Passing NULL is fine since we prevent two stations with the
