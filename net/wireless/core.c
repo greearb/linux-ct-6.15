@@ -1119,7 +1119,7 @@ EXPORT_SYMBOL(wiphy_rfkill_start_polling);
 void cfg80211_process_wiphy_works(struct cfg80211_registered_device *rdev,
 				  struct wiphy_work *end)
 {
-	unsigned int runaway_limit = 100;
+	unsigned int runaway_limit = 500;
 	unsigned long flags;
 
 	lockdep_assert_held(&rdev->wiphy.mtx);
@@ -1141,6 +1141,10 @@ void cfg80211_process_wiphy_works(struct cfg80211_registered_device *rdev,
 		if (wk == end)
 			break;
 
+		/* TODO:  Looks like the below if hit would leak memory at best.
+		 * Maybe could just return and then re-run a bit later?
+		 * For now, just will increase limit to 500 from 100 and hope problem goes away.
+		 */
 		if (WARN_ON(--runaway_limit == 0))
 			INIT_LIST_HEAD(&rdev->wiphy_work_list);
 	}
