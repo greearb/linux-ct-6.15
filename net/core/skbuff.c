@@ -5103,6 +5103,8 @@ __skb_to_sgvec(struct sk_buff *skb, struct scatterlist *sg, int offset, int len,
 	int i, copy = start - offset;
 	struct sk_buff *frag_iter;
 	int elt = 0;
+	int nrfrag = -1;
+	int orig_len = len;
 
 	if (unlikely(recursion_level >= 24))
 		return -EMSGSIZE;
@@ -5117,6 +5119,7 @@ __skb_to_sgvec(struct sk_buff *skb, struct scatterlist *sg, int offset, int len,
 		offset += copy;
 	}
 
+	nrfrag = skb_shinfo(skb)->nr_frags;
 	for (i = 0; i < skb_shinfo(skb)->nr_frags; i++) {
 		int end;
 
@@ -5163,7 +5166,11 @@ __skb_to_sgvec(struct sk_buff *skb, struct scatterlist *sg, int offset, int len,
 		}
 		start = end;
 	}
-	BUG_ON(len);
+	if (len) {
+		pr_err("%s len not zero: %d i: %d nrfrags: %d  orig_len: %d\n",
+		       __func__, len, i, nrfrag, orig_len);
+		BUG_ON(len);
+	}
 	return elt;
 }
 
