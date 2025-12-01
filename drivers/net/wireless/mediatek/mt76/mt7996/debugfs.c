@@ -2923,6 +2923,8 @@ void mt7996_link_sta_add_debugfs(struct ieee80211_hw *hw, struct ieee80211_vif *
 {
 	debugfs_create_file("link_sta_info", 0400, dir, link_sta,
 			    &mt7996_link_sta_info_fops);
+
+	mt7996_mtk_init_link_sta_debugfs(link_sta, dir);
 }
 
 static int

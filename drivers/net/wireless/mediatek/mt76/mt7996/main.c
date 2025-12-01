@@ -762,6 +762,10 @@ int mt7996_vif_link_add(struct mt76_phy *mphy, struct ieee80211_vif *vif,
 	}
 
 	mt76_dbg(&dev->mt76, MT76_DBG_BSS,
+		 "%s: mld_id=%u mld_id_mask=%llx\n",
+		 __func__, link->own_mld_id, dev->mld_id_mask);
+
+	mt76_dbg(&dev->mt76, MT76_DBG_BSS,
 		 "%s: band=%u, bss_idx=%u, link_id=%u, wcid=%u\n",
 		 __func__, phy->mt76->band_idx, mlink->idx,
 		 link_id, msta_link->wcid.idx);

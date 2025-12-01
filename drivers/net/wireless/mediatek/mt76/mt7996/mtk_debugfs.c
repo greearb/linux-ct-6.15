@@ -10,6 +10,7 @@
 #include "mtk_debug.h"
 #include "mtk_mcu.h"
 #include "coredump.h"
+#include "net/mac80211.h"
 #include <linux/vmalloc.h>
 
 #ifdef CONFIG_MTK_DEBUG
@@ -4265,20 +4266,83 @@ static int
 mt7996_link_wtbl_show(struct seq_file *file, void *data)
 {
 	struct ieee80211_bss_conf *conf = file->private;
-	struct mt7996_vif *mvif = (struct mt7996_vif *)conf->vif->drv_priv;
-	struct mt7996_sta *msta = &mvif->sta;
-	struct mt7996_dev *dev = mvif->dev;
-	struct mt7996_sta_link *msta_link;
+	struct mt7996_vif *mvif = NULL;
+	struct mt7996_dev *dev = NULL;
+	struct mt76_vif_link *mlink = NULL;
+	int ret = 0;
+
+	if (!conf || !conf->vif)
+		return -ENOENT;
+
+	mvif = (struct mt7996_vif *)conf->vif->drv_priv;
+
+	if (!mvif->deflink.phy)
+		return -ENOENT;
+
+	dev = mvif->deflink.phy->dev;
+
+	if (!dev)
+		return -ENOENT;
 
 	mutex_lock(&dev->mt76.mutex);
 
-	msta_link = mt76_dereference(msta->link[conf->link_id], &dev->mt76);
+	mlink = mt76_dereference(mvif->mt76.link[conf->link_id], &dev->mt76);
 
-	/* Index 0 is reserved for control frames, and can be printed by the driver.
+	/* WLAN 0 is reserved for control frames, and isn't attached to a link.
 	 * 0 here likely means uninitialized.
 	 */
-	if (!msta_link->wcid.idx)
+	if (!mlink || !mlink->wcid || mlink->wcid->idx == 0) {
+		ret = -ENOENT;
 		goto out;
+	}
+
+	mt7996_wtbl_dump(file, dev, mlink->wcid->idx);
+
+out:
+	mutex_unlock(&dev->mt76.mutex);
+
+	return ret;
+}
+DEFINE_SHOW_ATTRIBUTE(mt7996_link_wtbl);
+
+void mt7996_mtk_init_link_debugfs(struct ieee80211_bss_conf *link_conf, struct dentry *dir)
+{
+	debugfs_create_file("wtbl_info", 0600, dir, link_conf, &mt7996_link_wtbl_fops);
+}
+
+static int
+mt7996_link_sta_wtbl_show(struct seq_file *file, void *data)
+{
+	struct ieee80211_link_sta *link_sta = file->private;
+	struct mt7996_sta *msta = NULL;
+	struct mt7996_dev *dev = NULL;
+	struct mt7996_sta_link *msta_link = NULL;
+	int ret = 0;
+
+	if (!link_sta || !link_sta->sta)
+		return -ENOENT;
+
+	msta = (struct mt7996_sta *)link_sta->sta->drv_priv;
+
+	if (!msta || !msta->vif || !msta->vif->deflink.phy)
+		return -ENOENT;
+
+	dev = msta->vif->deflink.phy->dev;
+
+	if (!dev)
+		return -ENOENT;
+
+	mutex_lock(&dev->mt76.mutex);
+
+	msta_link = mt76_dereference(msta->link[link_sta->link_id], &dev->mt76);
+
+	/* WLAN 0 is reserved for control frames, and isn't attached to a link.
+	 * 0 here likely means uninitialized.
+	 */
+	if (!msta_link || msta_link->wcid.idx == 0) {
+		ret = -ENOENT;
+		goto out;
+	}
 
 	mt7996_wtbl_dump(file, dev, msta_link->wcid.idx);
 
@@ -4287,11 +4351,11 @@ out:
 
 	return 0;
 }
-DEFINE_SHOW_ATTRIBUTE(mt7996_link_wtbl);
+DEFINE_SHOW_ATTRIBUTE(mt7996_link_sta_wtbl);
 
-void mt7996_mtk_init_link_debugfs(struct ieee80211_bss_conf *link_conf, struct dentry *dir)
+void mt7996_mtk_init_link_sta_debugfs(struct ieee80211_link_sta *link_sta, struct dentry *dir)
 {
-	debugfs_create_file("wtbl_info", 0600, dir, link_conf, &mt7996_link_wtbl_fops);
+	debugfs_create_file("wtbl_info", 0600, dir, link_sta, &mt7996_link_sta_wtbl_fops);
 }
 
 #endif
