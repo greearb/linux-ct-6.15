@@ -843,7 +843,7 @@ static void ieee80211_get_stats2(struct net_device *dev,
 
 			if (mld) {
 				struct station_info_link *linfo = find_sinfo_link(li, &sinfo);
-				struct rate_info txrxrate;
+				struct rate_info txrxrate = {};
 				int mn;
 				u64 accum;
 
