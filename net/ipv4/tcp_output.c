@@ -1205,13 +1205,24 @@ void tcp_wfree(struct sk_buff *skb)
 	unsigned long flags, nval, oval;
 	struct tsq_tasklet *tsq;
 	bool empty;
+	int old;
 
 	/* Keep one reference on sk_wmem_alloc.
 	 * Will be released by sk_free() from here or tcp_tasklet_func()
 	 */
-	if (WARN_ON(refcount_sub_and_test(skb->truesize - 1, &sk->sk_wmem_alloc))) {
+	if (WARN_ON(__refcount_sub_and_test(skb->truesize - 1, &sk->sk_wmem_alloc, &old))) {
 		pr_err("skb->truesize: %d  sk_wmem_alloc: %d\n",
 		       skb->truesize, refcount_read(&sk->sk_wmem_alloc));
+	}
+
+	/* See if we are in REFCOUNT_SUB_UAF (use-after-free) state.
+	 * Bail out if so, hope we can recover somehow.
+	 */
+	if (unlikely(old <= 0 || old - (skb->truesize - 1) < 0)) {
+		WARN(1, "tcp-wfree, refcount UAF, old: %d  skb: %px  truesize: %d  sk-wmem-alloc: %d\n",
+		     old, skb, skb->truesize, refcount_read(&sk->sk_wmem_alloc));
+		/* do not free sk here, just return and hope we can soldier on. */
+		return;
 	}
 
 	/* If this softirq is serviced by ksoftirqd, we are likely under stress.

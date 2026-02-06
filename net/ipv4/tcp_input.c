@@ -3376,6 +3376,16 @@ static int tcp_clean_rtx_queue(struct sock *sk, const struct sk_buff *ack_skb,
 
 	first_ackt = 0;
 
+	if (((unsigned long)(sk)) < 8000) {
+		pr_err("Bad sk in tcp-clean-rtx-queue: %px ack-skb: %px  sack: %px  prior-fack: %d prior-snd-una: %d  ece-ack: %d\n",
+		       sk, ack_skb, sack, prior_fack, prior_snd_una, ece_ack);
+		/* Maybe we can recover.  This case is seen in double-free of skb, not sure
+		 * root cause, hoping we can manage some sort of work-around. --Ben
+		 */
+		WARN_ON(1);
+		return 0;
+	}
+
 	for (skb = skb_rb_first(&sk->tcp_rtx_queue); skb; skb = next) {
 		struct tcp_skb_cb *scb = TCP_SKB_CB(skb);
 		const u32 start_seq = scb->seq;
